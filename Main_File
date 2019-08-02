@@ -1,0 +1,532 @@
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
+[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing")
+[System.Windows.Forms.Application]::EnableVisualStyles()
+[Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
+[void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic')
+
+
+#The Previous Lines enabled the system to generate GUI's that would list all User profiles on a machine
+$Route = Split-Path $PSCommandPath
+$Route += '\USMT'
+$USMT = $Route   #These lines extract the USMT from which ever path the files where relatively stored. I.E if the exe runs the file through AppData, then the tools are temp stored there to run.
+
+$Drive ='C:\'
+
+$OpenQ                           = New-Object system.Windows.Forms.Form
+$OpenQ.ClientSize                = '674,234'
+$OpenQ.text                      = "Which Process and Drive"
+$OpenQ.TopMost                   = $false
+
+$GroupboxSOL                     = New-Object system.Windows.Forms.Groupbox
+$GroupboxSOL.height              = 100
+$GroupboxSOL.width               = 129
+$GroupboxSOL.text                = "Scan Or Load"
+$GroupboxSOL.location            = New-Object System.Drawing.Point(12,20)
+
+$ScanBox                         = New-Object system.Windows.Forms.CheckBox
+$ScanBox.text                    = "Scan State"
+$ScanBox.AutoSize                = $false
+$ScanBox.width                   = 95
+$ScanBox.height                  = 20
+$ScanBox.location                = New-Object System.Drawing.Point(25,25)
+$ScanBox.Font                    = 'Microsoft Sans Serif,10'
+
+$LoadBox                         = New-Object system.Windows.Forms.CheckBox
+$LoadBox.text                    = "Load State"
+$LoadBox.AutoSize                = $false
+$LoadBox.width                   = 95
+$LoadBox.height                  = 20
+$LoadBox.location                = New-Object System.Drawing.Point(25,64)
+$LoadBox.Font                    = 'Microsoft Sans Serif,10'
+
+$DrvieBox                        = New-Object system.Windows.Forms.Groupbox
+$DrvieBox.height                 = 100
+$DrvieBox.width                  = 200
+$DrvieBox.text                   = "User Profile Drive"
+$DrvieBox.location               = New-Object System.Drawing.Point(204,20)
+
+$DriveTextBox                    = New-Object system.Windows.Forms.TextBox
+$DriveTextBox.multiline          = $false
+$DriveTextBox.text               = $Drive
+$DriveTextBox.width              = 140
+$DriveTextBox.height             = 20
+$DriveTextBox.location           = New-Object System.Drawing.Point(33,23)
+$DriveTextBox.Font               = 'Microsoft Sans Serif,10'
+
+
+$ChangeButtonDrive               = New-Object system.Windows.Forms.Button
+$ChangeButtonDrive.text          = "Change"
+$ChangeButtonDrive.width         = 60
+$ChangeButtonDrive.height        = 30
+$ChangeButtonDrive.location      = New-Object System.Drawing.Point(62,61)
+$ChangeButtonDrive.Font          = 'Microsoft Sans Serif,9'
+
+
+$OKButtonBox                     = New-Object system.Windows.Forms.Button
+$OKButtonBox.text                = "OK"
+$OKButtonBox.width               = 71
+$OKButtonBox.height              = 44
+$OKButtonBox.location            = New-Object System.Drawing.Point(80,155)
+$OKButtonBox.Font                = 'Microsoft Sans Serif,10'
+$OKButtonBox.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$OpenQ.AcceptButton = $OKButtonBox
+$OpenQ.Controls.Add($OKButtonBox)
+
+$CancelButtonBox                 = New-Object system.Windows.Forms.Button
+$CancelButtonBox.text            = "Cancel"
+$CancelButtonBox.width           = 67
+$CancelButtonBox.height          = 44
+$CancelButtonBox.location        = New-Object System.Drawing.Point(293,155)
+$CancelButtonBox.Font            = 'Microsoft Sans Serif,10'
+$CancelButtonBox.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$OpenQ.CancelButton = $CancelButtonBox
+$OpenQ.Controls.Add($CancelButtonBox)
+
+$DomainBox                       = New-Object system.Windows.Forms.Groupbox
+$DomainBox.height                = 160
+$DomainBox.width                 = 218
+$DomainBox.text                  = "Domain"
+$DomainBox.location              = New-Object System.Drawing.Point(444,20)
+
+$Automatic                    = New-Object system.Windows.Forms.RadioButton
+$Automatic.text               = "Automatic\"
+$Automatic.size               = '95,20'
+$Automatic.location           = New-Object System.Drawing.Point(24,20)
+$Automatic.Checked            = $true
+
+$MEMPHISBox                     = New-Object System.Windows.Forms.RadioButton
+$MEMPHISBox.text                = "MEMPHIS\"
+$MEMPHISBox.size                 = '95,20'
+$MEMPHISBox.location            = New-Object System.Drawing.Point(24,52)
+$MEMPHISBox.Checked             = $false
+
+$MRTCCBox                       = New-Object system.Windows.Forms.RadioButton
+$MRTCCBox.text                  = "MRTCC\"
+$MRTCCBox.size                  = '95,20'
+$MRTCCBox.location              = New-Object System.Drawing.Point(24,89)
+$MRTCCBox.Checked               = $false
+
+$WorkGroup                    = New-Object system.Windows.Forms.RadioButton
+$WorkGroup.text               = "WorkGroup(.)\"
+$WorkGroup.size               = '95,20'
+$WorkGroup.location           = New-Object System.Drawing.Point(24,119) 
+$WorkGroup.Checked            = $false
+
+
+$OpenQ.controls.AddRange(@($GroupboxSOL,$DrvieBox,$OKButtonBox,$CancelButtonBox,$DomainBox))
+$GroupboxSOL.controls.AddRange(@($ScanBox,$LoadBox))
+$DrvieBox.controls.AddRange(@($DriveTextBox,$ChangeButtonDrive))
+$DomainBox.controls.AddRange(@($Automatic,$MEMPHISBox,$MRTCCBox,$WorkGroup))
+
+$CancelButtonBox.Add_Click({ 
+        {
+            $res = [System.Windows.Forms.MessageBox]::Show("You clicked Cancel. Would you like to try again or exit?", "Select a location", [System.Windows.Forms.MessageBoxButtons]::RetryCancel)
+            if($res -eq "Cancel")
+            {
+                #Ends script
+                return
+            }
+        } })
+
+
+
+
+$ChangeButtonDrive.Add_Click({ $Driver = New-Object System.Windows.Forms.FolderBrowserDialog
+
+    $Driver.SelectedPath = $Drive
+    $Driver.ShowNewFolderButton = $false
+    $Driver.Description = "Select Which Drive Has User Profiles"
+
+    $loop = $true
+    while($loop)
+    {
+        if ($Driver.ShowDialog() -eq "OK")
+        {
+        $loop = $false
+$Drive = $Driver.SelectedPath
+$DriveTextBox.text               = $Drive
+$Drive
+        } else
+        {
+            $res = [System.Windows.Forms.MessageBox]::Show("You clicked Cancel. Would you like to try again or exit?", "Select a location", [System.Windows.Forms.MessageBoxButtons]::RetryCancel)
+            if($res -eq "Cancel")
+            {
+                #Ends script
+                return
+            }
+        }
+    }
+    $Driver.SelectedPath
+    $Driver.Dispose() })
+
+
+
+
+
+
+
+$FirstQuestion = $OpenQ.ShowDialog()
+
+
+if(($ScanBox.Checked -eq $true)-and ($LoadBox.Checked -eq $false)){
+$ScanOrLoad = 'Scan'
+}
+elseif (($LoadBox.Checked -eq $true)-and ($ScanBox.Checked -eq $false)){
+$ScanOrLoad = 'Load'
+}
+
+elseif (($ScanBox.Checked -eq $true)-and ($LoadBox.Checked -eq $true)){
+$res = [System.Windows.Forms.MessageBox]::Show("You can't run both Scan and Load State at the same time", "Select a location")
+            if($res -eq "Close")
+            {
+                #Ends script
+                exit
+            }
+}
+
+
+###Derives the Domain of the computer and User profiles using THe $Drive Variable as a basis to search.
+ $subFolder = Get-ChildItem -Path $Drive\Windows\System32\GroupPolicy\DataStore\0\SysVol  | 
+       Where-Object {$_.PSIsContainer} | 
+       Foreach-Object {$_.Name}
+
+if( $subFolder.Contains(".")){
+$limiter = $subFolder.IndexOf(".")
+$DomainToUpper = $subFolder.Substring(0, $limiter)
+$Domain = $DomainToUpper.ToUpper()
+}
+else {
+$Domain = $subFolder.ToUpper()
+$Domain = $Domain + "\"
+}
+
+
+
+#### $Domain chooses from one of three string that will ac as the domain of the profiles so scanstate.exe can access and migrate them. ####
+
+if ($Automatic.checked){
+$Domain = $Domain
+}
+
+elseif($MEMPHISBox.checked){
+$Domain = 'MEMPHIS\'
+}
+elseif ($MRTCCBox.checked){
+$Domain = 'MRTCC\'
+}
+elseif($WorkGroup.checked){
+$Domain = '.\'
+}
+
+
+if ($ScanOrLoad -eq 'Scan') { 
+write-host "Activating ScanState.exe"
+}
+elseif($ScanOrLoad -eq 'Load'){
+write-host "Activating LoadState.exe"
+}
+else{
+write-host "Not Acvtivating either program"
+}
+
+if ($ScanOrLoad -eq 'Scan') {
+$browse = New-Object System.Windows.Forms.FolderBrowserDialog
+    $browse.SelectedPath = "$Drive\"
+    $browse.ShowNewFolderButton = $false
+    $browse.Description = "Choose the Save Location"
+
+    $loop = $true
+    while($loop)
+    {
+        if ($browse.ShowDialog() -eq "OK")
+        {
+        $loop = $false
+
+# Generates a Folder Brower GUI that lists all avalible subdirectories of whichever drive that the user specified eariler.
+
+$SaveFolder = $browse.SelectedPath
+         $NewFolder = $SaveFolder + "\SavedState" # Creates a new subdirectory called "SavedState" where a compressed .MIG that will contain all the selected user profiles will be generated.
+          New-Item  $NewFolder -type directory -Force 
+
+
+        } else
+        {
+            $res = [System.Windows.Forms.MessageBox]::Show("You clicked Cancel. Would you like to try again or exit?", "Select a location", [System.Windows.Forms.MessageBoxButtons]::RetryCancel)
+            if($res -eq "Cancel")
+            {
+                #Ends script
+                return
+            }
+        }
+    }
+    $browse.SelectedPath
+    $browse.Dispose()
+
+         $Script:Source= $USMT+'\amd64'
+
+         $Script:SaveFile = $NewFolder
+
+        $Script:ScanState = $Script:Source +'\scanstate.exe'
+
+        $Script:MigAppXml = $Script:Source +'\MigApp.xml'
+
+        $Script:MigUserXml = $Script:Source +'\MigUser.xml'
+
+#Loads USMT folder path that was selected as $USMT in the higher code. This path is then used to establish variables that will perform various tasks
+#The task are: Establish path to amd64 that contains tools for USMT to run on x64 windows machines (Win 7,8, and 10), Where to save User prfiles, an xml outling how to save User App data, and an xml outling how to save UserProf data.
+
+
+$arr = Get-ChildItem -Path $Drive\Users  | 
+       Where-Object {$_.PSIsContainer} | 
+       Foreach-Object {$_.Name}
+
+#Establishes a array that uses the user selected driver and saves every Profile name that is finds as a string for later uses.
+
+
+$form                            = New-Object system.Windows.Forms.Form
+$form.ClientSize                 = '400,400'
+$form.text                       = "Form"
+$form.TopMost                    = $false
+
+$label                          = New-Object system.Windows.Forms.Label
+$label.text                     = "Please Make a Selection from the List Below:"
+$label.AutoSize                 = $true
+$label.width                    = 25
+$label.height                   = 10
+$label.location                 = New-Object System.Drawing.Point(52,15)
+$label.Font                     = 'Microsoft Sans Serif,10'
+
+$listBox                        = New-Object system.Windows.Forms.ListBox
+$listBox.text                   = "listBox"
+$listBox.width                  = 245
+$listBox.height                 = 328
+$listBox.location               = New-Object System.Drawing.Point(24,43)
+
+$OKButton                        = New-Object system.Windows.Forms.Button
+$OKButton.text                   = "OK"
+$OKButton.width                  = 94
+$OKButton.height                 = 30
+$OKButton.location               = New-Object System.Drawing.Point(288,71)
+$OKButton.Font                   = 'Microsoft Sans Serif,10'
+$OKButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$form.AcceptButton = $OKButton
+$form.Controls.Add($OKButton)
+
+$CancelButton                    = New-Object system.Windows.Forms.Button
+$CancelButton.text               = "Cancel"
+$CancelButton.width              = 96
+$CancelButton.height             = 32
+$CancelButton.location           = New-Object System.Drawing.Point(287,176)
+$CancelButton.Font               = 'Microsoft Sans Serif,10'
+$CancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$form.CancelButton = $CancelButton
+$form.Controls.Add($CancelButton)
+
+$form.controls.AddRange(@($label,$listBox,$OKButton,$CancelButton))
+
+For ($a=0; ($a -le $arr.length -1); $a ++) {
+
+[void] $listBox.Items.Add($arr[$a])
+
+}
+
+$listBox.SelectionMode = 'MultiExtended'
+
+$listBox.Height = 350
+$form.Controls.Add($listBox)
+$form.Topmost = $true
+
+$result = $form.ShowDialog()
+
+# The eariler array that contained all the user profile names is then presented to the user where they can pick which profiles they want to save
+# Note that to pick more than one profile, the user will have to hold the ctrl key and left click to choose one by one or hold the shift key and left click to choose all the profiles between two clicks.
+
+if ($result -eq [System.Windows.Forms.DialogResult]::OK)
+{
+    $x = $listBox.SelectedItems
+    if ($x.Count -le 1){
+        $selection = $x
+}
+    elseif ( $x.Count -ge 1) {
+        $selection = $x.split(" ")
+}
+}
+ #The selected user profiles are then saved as seperate string in an array for later used as the variable $selection
+
+$Invoker = "$Script:ScanState $Script:SaveFile,  /i:$Script:MigAppXml,  /i:$Script:MigUserXml, /o, /l:$Script:SaveFile\scanstate.log, /c, /ue:*\*"
+
+#The variable $Invoker directly activates the scanstate.exe, specifies where to place the migrated user profiles, loads the MigApp.xml, loads the MigUser.xml,-
+#-Overwrites any pervious subdirectories that may be found that are named "SavedState", ignores all non-fatal errors and excludes all user profiles unless spefied otherwise.
+#Please note that the /c is used to ignore erros caused by certain files denying the program access to copy them. These files are often found in the AppData.
+
+$ui = ', /ui:' # Code that adds a comma for seperation and /ui: to the scanstate that this user profiles is to be included in the migration
+$AllUsers = '' # Creates string varible that contains ' '
+For ($i=0; $i -le $selection.Count -1  ; $i++) {
+ $f = $selection[$i]
+ $AllUsers += $ui +$Domain + $f
+
+#The For loop runs through all of the previous selected user profiles that were storred in the $selection array and then stores the concated verison-
+#-of the $ui, $Domain, and $f variables. The example result will look like this: , /ui:MEMPHIS\InsertUser.NameHere, /ui:MEMPHIS\ThisIs.AnExample
+
+ }
+
+ $Invo = $AllUsers 
+ $Invoker = $Invoker + $Invo
+
+#The varibles contain all the profiles selected eariler are then formatted to work with the code contained in the $Invoker variable, scaved into the $Invo variable
+#Where it is then directly concacted with the $Invoker variable
+
+ $Invoker | Invoke-Expression
+
+
+$ReForm                            = New-Object system.Windows.Forms.Form
+$ReForm.ClientSize                 = '373,167'
+$ReForm.text                       = "Return Code Value"
+$ReForm.TopMost                    = $false
+
+$TextBox1                        = New-Object system.Windows.Forms.TextBox
+$TextBox1.multiline              = $false
+$TextBox1.text                   = "The migration has completed"
+$TextBox1.width                  = 188
+$TextBox1.height                 = 20
+$TextBox1.location               = New-Object System.Drawing.Point(70,13)
+$TextBox1.Font                   = 'Microsoft Sans Serif,10'
+
+$TextBox2                        = New-Object system.Windows.Forms.TextBox
+$TextBox2.multiline              = $false
+$TextBox2.text                   = "Below is the Return Code Value"
+$TextBox2.width                  = 165
+$TextBox2.height                 = 20
+$TextBox2.location               = New-Object System.Drawing.Point(87,43)
+$TextBox2.Font                   = 'Microsoft Sans Serif,10'
+
+$OKButton                        = New-Object system.Windows.Forms.Button
+$OKButton.text                   = "OK"
+$OKButton.width                  = 60
+$OKButton.height                 = 30
+$OKButton.location               = New-Object System.Drawing.Point(141,127)
+$OKButton.Font                   = 'Microsoft Sans Serif,10'
+$OKButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$form.AcceptButton = $OKButton
+$form.Controls.Add($OKButton)
+
+$TextBox3                        = New-Object system.Windows.Forms.TextBox
+$TextBox3.multiline              = $false
+$TextBox3.text                   = "$LASTEXITCODE"
+$TextBox3.width                  = 182
+$TextBox3.height                 = 20
+$TextBox3.location               = New-Object System.Drawing.Point(85,74)
+$TextBox3.Font                   = 'Microsoft Sans Serif,10'
+
+$ReForm.controls.AddRange(@($TextBox1,$TextBox2,$OKButton,$TextBox3))
+
+$ReturnCode = $ReForm.ShowDialog()
+
+
+
+#$Invoker is then called as a extermly long string where it is then piplelined to the Inovke-Expression command that runs a string as a command
+#This converts the entire string into a long powershell command, meaning that the start command at the beginning of the sting then activates and begin the migration process to save the profiles.
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+elseif ($ScanOrLoad -eq 'Load') {
+
+ $browse = New-Object System.Windows.Forms.FolderBrowserDialog
+    $browse.SelectedPath = "$Drive\"
+    $browse.ShowNewFolderButton = $false
+    $browse.Description = "Select the SavedState Folder You Want"
+
+#Opens a GUI to selecet where a pevious SavedState folder is. The the folder doesn't have to be named "SavedState" it does have to contain a .MIG file
+
+    $loop = $true
+    while($loop)
+    {
+        if ($browse.ShowDialog() -eq "OK")
+        {
+        $loop = $false
+$MIG = $browse.SelectedPath
+        } else
+        {
+            $res = [System.Windows.Forms.MessageBox]::Show("You clicked Cancel. Would you like to try again or exit?", "Select a location", [System.Windows.Forms.MessageBoxButtons]::RetryCancel)
+            if($res -eq "Cancel")
+            {
+                #Ends script
+                return
+            }
+        }
+    }
+    $browse.SelectedPath
+    $browse.Dispose()
+
+$Script:Source= $USMT+'\amd64'
+
+$Script:LoadFile = $MIG
+
+$Script:LoadState = $Script:Source +'\loadstate.exe'
+
+$Script:MigAppXml = $Script:Source +'\MigApp.xml'
+
+$Script:MigUserXml = $Script:Source +'\MigUser.xml'
+
+$Invoker = "$Script:LoadState  $Script:LoadFile,  /i:$Script:MigAppXml,  /i:$Script:MigUserXml ,/l:$Script:LoadFile\loadstate.log, /c"
+
+ $Invoker | Invoke-Expression
+
+
+$ReForm                            = New-Object system.Windows.Forms.Form
+$ReForm.ClientSize                 = '373,167'
+$ReForm.text                       = "Return Code Value"
+$ReForm.TopMost                    = $false
+
+$TextBox1                        = New-Object system.Windows.Forms.TextBox
+$TextBox1.multiline              = $false
+$TextBox1.text                   = "The migration has completed"
+$TextBox1.width                  = 188
+$TextBox1.height                 = 20
+$TextBox1.location               = New-Object System.Drawing.Point(70,13)
+$TextBox1.Font                   = 'Microsoft Sans Serif,10'
+
+$TextBox2                        = New-Object system.Windows.Forms.TextBox
+$TextBox2.multiline              = $false
+$TextBox2.text                   = "Below is the Return Code Value"
+$TextBox2.width                  = 165
+$TextBox2.height                 = 20
+$TextBox2.location               = New-Object System.Drawing.Point(87,43)
+$TextBox2.Font                   = 'Microsoft Sans Serif,10'
+
+$OKButton                        = New-Object system.Windows.Forms.Button
+$OKButton.text                   = "OK"
+$OKButton.width                  = 60
+$OKButton.height                 = 30
+$OKButton.location               = New-Object System.Drawing.Point(141,127)
+$OKButton.Font                   = 'Microsoft Sans Serif,10'
+$OKButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$ReForm.AcceptButton = $OKButton
+$ReForm.Controls.Add($OKButton)
+
+$TextBox3                        = New-Object system.Windows.Forms.TextBox
+$TextBox3.multiline              = $false
+$TextBox3.text                   = "$LASTEXITCODE"
+$TextBox3.width                  = 182
+$TextBox3.height                 = 20
+$TextBox3.location               = New-Object System.Drawing.Point(85,74)
+$TextBox3.Font                   = 'Microsoft Sans Serif,10'
+
+$ReForm.controls.AddRange(@($TextBox1,$TextBox2,$OKButton,$TextBox3))
+
+$ReturnCode = $ReForm.ShowDialog()
+}
